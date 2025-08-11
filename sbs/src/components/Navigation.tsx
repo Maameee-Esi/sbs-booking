@@ -68,6 +68,7 @@ const Navigation = () => {
     { name: "Home", path: "/" },
     { name: "Gallery", path: "/gallery" },
     { name: "Book", path: "/booking" },
+    { name: "AdminPage", path: "/admin" },
   ];
 
   return (

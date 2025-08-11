@@ -1,374 +1,209 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { PaystackButton } from "react-paystack";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
-import { toast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 
-interface BookingForm {
+interface Service {
   name: string;
-  phone: string;
-  service: string;
-  date: string;
-  time: string;
-  notes: string;
+  price: number;
 }
 
-const Booking = () => {
-  // State to manage form data for booking
-  const [formData, setFormData] = useState<BookingForm>({
-    name: "",
-    phone: "",
-    service: "",
-    date: "",
-    time: "",
-    notes: "",
-  });
+const services: Service[] = [
+  { name: "Haircut", price: 50 },
+  { name: "Color dyeing", price: 50 },
+  { name: "Washing", price: 50 },
+  { name: "Piercing", price: 50 },
+];
 
-  // State to track whether the form is being submitted
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const Booking: React.FC = () => {
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [notes, setNotes] = useState("");
 
-  // List of available services with their details
-  const services = [
-    { value: "classic-cut", label: "Classic Cut - GHS500", duration: "30 min" },
-    {
-      value: "signature-cut",
-      label: "Signature Cut & Style - GHS50",
-      duration: "45 min",
-    },
-    { value: "beard-trim", label: "Beard Trim - 635", duration: "20 min" },
-    {
-      value: "full-service",
-      label: "Full Service (Cut + Beard) - 885",
-      duration: "60 min",
-    },
-    { value: "hot-towel", label: "Hot Towel Shave - 755", duration: "40 min" },
-  ];
+  const publicKey = "your-public-key-here"; // Replace with your Paystack public key
+  const amount = selectedService ? selectedService.price * 100 : 0; // pesewas
 
-  // List of available time slots for booking
-  const timeSlots = [
-    "9:00 AM",
-    "9:30 AM",
-    "10:00 AM",
-    "10:30 AM",
-    "11:00 AM",
-    "11:30 AM",
-    "12:00 PM",
-    "12:30 PM",
-    "1:00 PM",
-    "1:30 PM",
-    "2:00 PM",
-    "2:30 PM",
-    "3:00 PM",
-    "3:30 PM",
-    "4:00 PM",
-    "4:30 PM",
-    "5:00 PM",
-    "5:30 PM",
-  ];
-
-  // Function to handle changes in form inputs
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^a-zA-Z\s]/g, ""); 
+    setCustomerName(value);
   };
 
-  // Function to handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10); 
+    setCustomerPhone(value);
+  };
 
-    // Basic validation to ensure all required fields are filled
-    if (
-      !formData.name ||
-      !formData.phone ||
-      !formData.service ||
-      !formData.date ||
-      !formData.time
-    ) {
-      toast({
-        title: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      setIsSubmitting(false);// Reset submitting state
-      return;
-    }
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDate(e.target.value);
+    setTime(""); // reset time when date changes
+  };
 
-    try {
-      // TODO: Replace with actual Django API endpoint
-      // const response = await fetch('/api/bookings/', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //     'X-CSRFToken': getCsrfToken(), // Add CSRF protection
-      //   },
-      //   body: JSON.stringify({
-      //     customer_name: formData.name,
-      //     phone_number: formData.phone,
-      //     service_type: formData.service,
-      //     appointment_date: formData.date,
-      //     appointment_time: formData.time,
-      //     notes: formData.notes
-      //   })
-      // });
+  
+  const getMinMaxTime = () => {
+    if (!date) return {};
+    const selectedDate = new Date(date);
+    const day = selectedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Log the payload for debugging purposes
-      console.log("Booking submission payload:", {
-        customer_name: formData.name,
-        phone_number: formData.phone,
-        service_type: formData.service,
-        appointment_date: formData.date,
-        appointment_time: formData.time,
-        notes: formData.notes,
-        // Add metadata for backend processing
-        timestamp: new Date().toISOString(),
-        source: "web_booking_form",
-      });
-      
-      // Show success toast notification
-      toast({
-        title: "Booking Request Submitted!",
-        description:
-          "We'll confirm your appointment within 2 hours via phone or text.",
-      });
-
-      // Reset form
-      setFormData({
-        name: "",
-        phone: "",
-        service: "",
-        date: "",
-        time: "",
-        notes: "",
-      });
-    } catch (error) {
-      console.error("Booking submission error:", error);
-      toast({
-        title: "Booking Failed",
-        description: "Please try again or call us directly at 0507678878",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
+    if (day === 0) {
+      // Sunday
+      return { min: "12:00", max: "21:00" };
+    } else {
+      // Monday - Saturday
+      return { min: "09:00", max: "22:00" };
     }
   };
 
-  // Get minimum date (today)
+  const componentProps = {
+    email: customerEmail,
+    amount,
+    currency: "GHS",
+    metadata: {
+      custom_fields: [
+        { display_name: "Customer Name", variable_name: "name", value: customerName },
+        { display_name: "Phone Number", variable_name: "phone", value: customerPhone },
+        { display_name: "Service", variable_name: "service", value: selectedService?.name || "None" },
+        { display_name: "Date", variable_name: "date", value: date },
+        { display_name: "Time", variable_name: "time", value: time },
+      ],
+    },
+    publicKey,
+    text: "Book & Pay Now",
+    onSuccess: () => alert("Payment successful! Your booking has been recorded."),
+    onClose: () => alert("Payment closed."),
+  };
+
   const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="min-h-screen bg-barbershop-gray-50">
       <Navigation />
-
       <main className="pt-24 pb-16">
         <div className="max-w-2xl mx-auto px-6">
-          {/* Header */}
-          <div className="text-center mb-12 animate-fade-in">
-            <h1 className="text-4xl md:text-5xl font-space font-light text-barbershop-black mb-4">
-              Book Your Appointment
-            </h1>
-            <p className="text-lg text-barbershop-gray-600 max-w-lg mx-auto">
-              Reserve your time with our master barbers. We'll confirm your
-              appointment within 2 hours.
-            </p>
-          </div>
+          <h1 className="text-4xl font-serif font-bold text-center mb-4">Book Your Appointment</h1>
+          <p className="text-center text-gray-500 mb-8">
+            Secure your spot instantly with online payment.
+          </p>
 
-          {/* Booking Form */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 animate-fade-in-up">
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Personal Information */}
-              <div className="space-y-6">
-                <h2 className="text-2xl font-space font-light text-barbershop-black">
-                  Personal Information
-                </h2>
-
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm font-medium text-barbershop-gray-700 mb-2"
-                  >
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="premium-input"
-                    placeholder="Maame Esi"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="block text-sm font-medium text-barbershop-gray-700 mb-2"
-                  >
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="premium-input"
-                    placeholder="(233) 543-4567"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Service Selection */}
-              <div className="space-y-6">
-                <h2 className="text-2xl font-space font-light text-barbershop-black">
-                  Service Selection
-                </h2>
-
-                <div>
-                  <label
-                    htmlFor="service"
-                    className="block text-sm font-medium text-barbershop-gray-700 mb-2"
-                  >
-                    Choose Your Service *
-                  </label>
-                  <select
-                    id="service"
-                    name="service"
-                    value={formData.service}
-                    onChange={handleInputChange}
-                    className="premium-input"
-                    required
-                  >
-                    <option value="">Select a service...</option>
-                    {services.map((service) => (
-                      <option key={service.value} value={service.value}>
-                        {service.label} ({service.duration})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Date & Time */}
-              <div className="space-y-6">
-                <h2 className="text-2xl font-space font-light text-barbershop-black">
-                  Preferred Date & Time
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      htmlFor="date"
-                      className="block text-sm font-medium text-barbershop-gray-700 mb-2"
-                    >
-                      Date *
-                    </label>
-                    <input
-                      type="date"
-                      id="date"
-                      name="date"
-                      value={formData.date}
-                      onChange={handleInputChange}
-                      min={today}
-                      className="premium-input"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="time"
-                      className="block text-sm font-medium text-barbershop-gray-700 mb-2"
-                    >
-                      Time *
-                    </label>
-                    <select
-                      id="time"
-                      name="time"
-                      value={formData.time}
-                      onChange={handleInputChange}
-                      className="premium-input"
-                      required
-                    >
-                      <option value="">Select time...</option>
-                      {timeSlots.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Additional Notes */}
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <form className="space-y-6">
               <div>
-                <label
-                  htmlFor="notes"
-                  className="block text-sm font-medium text-barbershop-gray-700 mb-2"
-                >
-                  Special Requests or Notes
-                </label>
-                <textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="premium-input resize-none"
-                  placeholder="Any specific styling requests, allergies, or preferences..."
+                <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={handleNameChange}
+                  required
+                  className="w-full mt-1 border rounded-lg px-4 py-3"
                 />
               </div>
 
-              {/* Submit Button */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-6">
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`premium-button flex-1 ${
-                    isSubmitting ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                >
-                  {isSubmitting ? "Submitting..." : "Book Appointment"}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={handlePhoneChange}
+                  required
+                  className="w-full mt-1 border rounded-lg px-4 py-3"
+                />
+              </div>
 
-                <Link
-                  to="/"
-                  className="premium-button-outline flex-1 text-center"
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email Address</label>
+                <input
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  required
+                  className="w-full mt-1 border rounded-lg px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Select Service</label>
+                <select
+                  value={selectedService?.name || ""}
+                  onChange={(e) =>
+                    setSelectedService(services.find((s) => s.name === e.target.value) || null)
+                  }
+                  required
+                  className="w-full mt-1 border rounded-lg px-4 py-3"
                 >
+                  <option value="">-- Select a Service --</option>
+                  {services.map((service) => (
+                    <option key={service.name} value={service.name}>
+                      {service.name} - GHS {service.price}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={handleDateChange}
+                  min={today}
+                  required
+                  className="w-full mt-1 border rounded-lg px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Time</label>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  {...getMinMaxTime()}
+                  required
+                  className="w-full mt-1 border rounded-lg px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Additional Notes</label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={3}
+                  className="w-full mt-1 border rounded-lg px-4 py-3"
+                />
+              </div>
+
+              {selectedService && (
+                <p className="text-lg font-bold">
+                  Total: GHS {selectedService.price}
+                </p>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-6">
+                {selectedService && customerEmail && customerName && customerPhone ? (
+                  <PaystackButton {...componentProps} className="premium-button flex-1 text-center" />
+                ) : (
+                  <button disabled className="premium-button flex-1 opacity-50 cursor-not-allowed">
+                    Pay
+                  </button>
+                )}
+
+                <Link to="/" className="premium-button-outline flex-1 text-center">
                   Cancel
                 </Link>
               </div>
             </form>
-
-            {/* Contact Info */}
-            <div className="mt-12 pt-8 border-t border-barbershop-gray-200 text-center">
-              <p className="text-barbershop-gray-600 mb-2">
-                Need immediate assistance?
-              </p>
-              <a
-                href="tel:0507678878"
-                className="text-barbershop-black font-medium hover:text-barbershop-gray-700 transition-colors"
-              >
-                Call us on 0507678878
-              </a>
-            </div>
           </div>
         </div>
       </main>
-
       <Footer />
     </div>
   );
 };
 
 export default Booking;
+
